@@ -41,6 +41,7 @@ Bv = model.addVars(V, T, lb=0, name="Bv")                # Agua almacenada
 Di = model.addVars(NG, T, lb=0, name="Di")               # Desecho agua gris
 Ht = model.addVars(T, lb=0, name="Ht")                   # Desecho agua tratada
 
-# (Aquí se irán agregando restricciones...)
+
+# --- Restricciones ---
 
 model.update()
