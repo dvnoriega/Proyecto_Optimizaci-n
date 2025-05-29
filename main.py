@@ -52,23 +52,39 @@ for v in V:
             quicksum(AT[i, j, t] for (i, j) in A if j == v) -
             quicksum(AT[i, j, t] for (i, j) in A if i == v)
         )
-# El volumen almacenado no supera la cota máxima.
+# El volumen almacenado no supera la cota máxima, y si está vacío no hay agua en el estanque.  
 for v in V:
     for t in T:
-        model.addConstr(Bv[v, t] <= kappa[v])
+        model.addConstr(Bv[v, t] <= kappa[v] * (1 - y[v, t]))
+        model.addConstr(z[v, t] >= y[v, t])
+        model.addConstr(z[v, t] >= Bv[v, t] / kappa[v])
+
+# Cada 48 horas se vacía el estanque. 
+for v in V:
+    for t in range(len(T) - 2):
+        model.addConstr(y[v, t] + y[v, t+1] + y[v, t+2] >= z[v, t])
 
 # Verificar que el agua cumpla con la calidad mínima para ser tratada y entrar al sistema.   
-for (i, j) in A:
-    if j in S:
-        for t in T:
-            model.addConstr(x[i, j, t] * omega <= mu.get((i, j, t), 1.0))
+for (s, j, t) in mu:
+    model.addConstr(e[s, j, t] * omega <= mu[s, j, t])
+    model.addConstr(AT[s, j, t] <= C[s, j] * e[s, j, t])
+
+# Se cumple con la demanda por bloque. 
+for b in B:
+    for t in T:
+        model.addConstr(quicksum(AT[i, b, t] for (i, j) in A if j == b) >= P[b, t])
 
 # La cantidad de agua gris que entra al sistema de trata es la misma que la que sale. 
+# En caso de estar en mantención no hay flujo.
 for s in S:
     for t in T:
-        flujo_entrante = quicksum(AG[i, s, t] for (i, j) in A if j == s)
-        flujo_saliente = quicksum(AT[s, j, t] for (i, j) in A if i == s)
-        model.addConstr(flujo_entrante == flujo_saliente)
+        model.addConstr(
+            quicksum(AG[i, s, t] for (i, j) in A if j == s) ==
+            quicksum(AT[s, j, t] for (i, j) in A if i == s)
+        )
+        model.addConstr(
+            quicksum(AG[i, s, t] for (i, j) in A if j == s) +
+            quicksum(AT[s, j, t] for (i, j) in A if i == s) <= 2 * 100000 * (1 - m[s, t])
+        )
 
-# Si el sistema está en mantención no tiene flujo de agua. 
 model.update()
