@@ -85,6 +85,6 @@ for s in S:
         model.addConstr(
             quicksum(AG[i, s, t] for (i, j) in A if j == s) +
             quicksum(AT[s, j, t] for (i, j) in A if i == s) <= 2 * 100000 * (1 - m[s, t])
-        )
+        ) 
 
 model.update()
