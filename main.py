@@ -43,5 +43,23 @@ Ht = model.addVars(T, lb=0, name="Ht")                   # Desecho agua tratada
 
 
 # --- Restricciones ---
+# El estanque parte vacío, luego se verifica la conservación del flujo en el almacenamiento de agua.
+for v in V:
+    model.addConstr(Bv[v, 0] == 0)
+    for t in T[1:]:
+        model.addConstr(
+            Bv[v, t] == Bv[v, t-1] +
+            quicksum(AT[i, j, t] for (i, j) in A if j == v) -
+            quicksum(AT[i, j, t] for (i, j) in A if i == v)
+        )
+# El volumen almacenado no supera la cota máxima.
+for v in V:
+    for t in T:
+        model.addConstr(Bv[v, t] <= kappa[v])
 
+# Verificar que el agua cumpla con la calidad mínima para ser tratada. 
+for (i, j) in A:
+    if j in S:
+        for t in T:
+            model.addConstr(x[i, j, t] * omega <= mu.get((i, j, t), 1.0))
 model.update()
