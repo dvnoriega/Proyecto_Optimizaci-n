@@ -1,4 +1,6 @@
 from gurobipy import *
+import pandas
+import os
 
 # --- Crear el modelo ---
 model = Model("Reutilizacion_Aguas_Grises")
@@ -26,7 +28,8 @@ delta = {t: 50 for t in T}
 C = {(i, j): 1000 for (i, j) in A}
 T_sigma = {(i, j): 1 for (i, j) in A}
 S_sigma = {s: 3 for s in S}
-L_sigma = {s: 2000 for s in S}
+L_sigma = {s: 436099 for s in S}
+L_sigma.update({v: 0 for v in V}) 
 O = {(b, t): 500 for b in B for t in T}
 P = {(b, t): 400 for b in B for t in T}
 
@@ -103,6 +106,7 @@ model.addConstrs((
     quicksum(AG[v, j, t] for j in N if (v, j) in A) == 0
     for v in V for t in T
 ), name="R12")
+
 #R12: Alalmacén de agua tratada no entran aguas grises
 model.addConstrs((quicksum(AG[i,v,t] for i in N if (i,v) in A) + quicksum(AG[v,j,t] for j in N if (v,j) in A) == 0 for v in V for t in T),name = "R12")
 
@@ -129,24 +133,26 @@ model.addConstrs((
     for t in T
 ), name="R16")
 
-#R17: Balance de aguas grises.
+# R17: Balance de aguas grises.
 model.addConstrs((
     quicksum(AG[i, ng, t] for i in N if (i, ng) in A) -
     quicksum(AG[ng, j, t] for j in N if (ng, j) in A) ==
     quicksum(O[b, t] for b in B) -
-    quicksum(Di[ng, t] for ng in NG) -
+    Di[ng, t] -
     quicksum(AG[i, s, t] for i in N for s in S if (i, s) in A)
-    for t in T
+    for ng in NG for t in T
 ), name="R17")
+
 
 #R18: Balance de aguas tratadas en toda la red.
 model.addConstrs((
-    quicksum(AT[j, i, t] for j in N if (j, i) in A and i in NT + V) -
-    quicksum(AT[i, j, t] for j in N if (i, j) in A and i in NT + V) -
-    quicksum(AT[j, b, t] for j in N if (j, b) in A for b in B) ==
+    quicksum(AT[j, n, t] for j in N for n in NT + V if (j, n) in A) -
+    quicksum(AT[n, j, t] for n in NT + V for j in N if (n, j) in A) -
+    quicksum(AT[j, b, t] for j in N for b in B if (j, b) in A) ==
     quicksum(AT[i, s, t] for i in N for s in S if (i, s) in A) - Ht[t]
     for t in T
 ), name="R18")
+
 
 #R19: Se hace mínimo una mantención mensual al sistema.
 model.addConstrs((quicksum(m[s, t] for t in T) >= 1 for s in S), name="R19")
@@ -164,5 +170,23 @@ model.addConstrs((
     for n in NG + NT for t in T
 ), name="R21")
 
-model.update()
+# --- Función Objetivo ---
+model.setObjective(
+    quicksum(T_sigma[i, j] * (AG[i, j, t] + AT[i, j, t]) for (i, j) in A for t in T) +
+    quicksum(S_sigma[s] * quicksum(AG[i, s, t] for i in N if (i, s) in A) for s in S for t in T) +
+    quicksum(m[i, t] * L_sigma[i] for i in S + V for t in T) +
+    quicksum(delta[t] * Di[ng, t] for ng in NG for t in T) +
+    quicksum(phi[t] * Ht[t] for t in T),
+    GRB.MINIMIZE
+)
+
+# --- Resolver modelo ---
+model.optimize()
+
+# --- Resultados básicos ---
+if model.status == GRB.OPTIMAL:
+    print(f"\nCosto mínimo total: {model.ObjVal}")
+    for (i, j, t) in AG.keys():
+        if AG[i, j, t].X > 0:
+            print(f"AG[{i},{j},{t}] = {AG[i,j,t].X}")
 
