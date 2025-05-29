@@ -66,9 +66,9 @@ for (i, j) in A:
 # La cantidad de agua gris que entra al sistema de trata es la misma que la que sale. 
 for s in S:
     for t in T:
-        inflow = quicksum(AG[i, s, t] for (i, j) in A if j == s)
-        outflow = quicksum(AT[s, j, t] for (i, j) in A if i == s)
-        model.addConstr(inflow == outflow)
+        flujo_entrante = quicksum(AG[i, s, t] for (i, j) in A if j == s)
+        flujo_saliente = quicksum(AT[s, j, t] for (i, j) in A if i == s)
+        model.addConstr(flujo_entrante == flujo_saliente)
 
 # Si el sistema está en mantención no tiene flujo de agua. 
 model.update()
