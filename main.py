@@ -57,9 +57,18 @@ for v in V:
     for t in T:
         model.addConstr(Bv[v, t] <= kappa[v])
 
-# Verificar que el agua cumpla con la calidad mínima para ser tratada. 
+# Verificar que el agua cumpla con la calidad mínima para ser tratada y entrar al sistema.   
 for (i, j) in A:
     if j in S:
         for t in T:
             model.addConstr(x[i, j, t] * omega <= mu.get((i, j, t), 1.0))
+
+# La cantidad de agua gris que entra al sistema de trata es la misma que la que sale. 
+for s in S:
+    for t in T:
+        inflow = quicksum(AG[i, s, t] for (i, j) in A if j == s)
+        outflow = quicksum(AT[s, j, t] for (i, j) in A if i == s)
+        model.addConstr(inflow == outflow)
+
+# Si el sistema está en mantención no tiene flujo de agua. 
 model.update()
