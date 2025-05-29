@@ -87,4 +87,26 @@ for s in S:
             quicksum(AT[s, j, t] for (i, j) in A if i == s) <= 2 * 100000 * (1 - m[s, t])
         ) 
 
+# R3> El almacen con aguas tratadas solo se vac´ıa si el estanque tiene agua
+model.addConstrs((z[v,t] >= y[v,t] for v in V for t in T), name = "R3")                                #Revisar 
+
+# R4> Si el almacén tiene agua, z vale 1
+model.addConstrs((z[v,t] >= Bv[v,t]/kappa[v] for v in V for t in T), name = "R4")                      #Revisar 
+
+# R8> Asegurar que solo fluya agua tratada si se cumple calidad
+model.addConstrs((AT[s,j,t] <= C[s,j]*e[s,j,t] for j in NT for s in S if (s,j) in A for t in T), name = "R8") 
+
+# R9> El agua tratada cumple la demanda del bloque b
+model.addConstrs((quicksum(AT[i,b,t] for i in N if (i,b) in A) >= P[b,t] for b in B for t in T), name = "R9")    #Falta agregar restricción para que AT no entre a B 
+
+# R12 Alalmacén de agua tratada no entran aguas grises
+model.addConstrs((quicksum(AG[i,v,t] for i in N if (i,v) in A) + quicksum(AG[v,j,t] for j in N if (v,j) in A) == 0 for v in V for t in T), name = "R12")
+
+# R13 
+model.addConstrs((quicksum(AT[v,j,t] for j in N if (v,j) in A) + quicksum(AT[i,v,t] for i in N if (i,v) in A) <=  kappa[v] * (1 - m[v,t]) for v in V for t in T), name = "R13") 
+
+# R14 Sicumploconlacalidad,nodesechoelaguatratada
+model.addConstrs((AT[j,dc,t] <= C[j,dc] * (1 - e[i,j,t]) for i in NT for j in NT if j != i and (i,j) in A for t in T for dc in DC ), name = "R14")
+
 model.update()
+
