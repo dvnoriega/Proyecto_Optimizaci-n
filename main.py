@@ -183,10 +183,79 @@ model.setObjective(
 # --- Resolver modelo ---
 model.optimize()
 
-# --- Resultados básicos ---
+# --- Resultados función objetivo ---
 if model.status == GRB.OPTIMAL:
     print(f"\nCosto mínimo total: {model.ObjVal}")
     for (i, j, t) in AG.keys():
         if AG[i, j, t].X > 0:
             print(f"AG[{i},{j},{t}] = {AG[i,j,t].X}")
 
+
+# --- Crear excel con resultados básicos ---
+if model.status == GRB.OPTIMAL:
+    # AG - Agua Gris
+    ag_data = []
+    for (i, j, t) in AG.keys():
+        val = AG[i, j, t].X
+        if val > 0.1:
+            ag_data.append({'Día': t, 'Origen': i, 'Destino': j, 'Litros Agua Gris': val})
+
+    df_ag = pd.DataFrame(ag_data)
+
+    # AT - Agua Tratada
+    at_data = []
+    for (i, j, t) in AT.keys():
+        val = AT[i, j, t].X
+        if val > 0.1:
+            at_data.append({'Día': t, 'Origen': i, 'Destino': j, 'Litros Agua Tratada': val})
+
+    df_at = pd.DataFrame(at_data)
+
+    # Mantenciones (m)
+    m_data = []
+    for i in S + V:
+        for t in T:
+            val = m[i, t].X
+            if val > 0.9:
+                m_data.append({'Día': t, 'Nodo': i, 'Mantención': 1})
+
+    df_m = pd.DataFrame(m_data)
+
+    # Vaciados (y)
+    y_data = []
+    for v in V:
+        for t in T:
+            val = y[v, t].X
+            if val > 0.9:
+                y_data.append({'Día': t, 'Estanque': v, 'Vaciado': 1})
+
+    df_y = pd.DataFrame(y_data)
+
+    # Desechos Agua Gris (Di)
+    di_data = []
+    for (i, t) in Di.keys():
+        val = Di[i, t].X
+        if val > 0.1:
+            di_data.append({'Día': t, 'Nodo': i, 'Litros Desecho Agua Gris': val})
+
+    df_di = pd.DataFrame(di_data)
+
+    # Desechos Agua Tratada (Ht)
+    ht_data = []
+    for t in T:
+        val = Ht[t].X
+        if val > 0.1:
+            ht_data.append({'Día': t, 'Litros Desecho Agua Tratada': val})
+
+    df_ht = pd.DataFrame(ht_data)
+
+    # Crea archivo Excel
+    with pd.ExcelWriter('resultados_modelo_aguas_grises.xlsx') as writer:
+        df_ag.to_excel(writer, sheet_name='AG_Agua_Gris', index=False)
+        df_at.to_excel(writer, sheet_name='AT_Agua_Tratada', index=False)
+        df_m.to_excel(writer, sheet_name='Mantenciones', index=False)
+        df_y.to_excel(writer, sheet_name='Vaciados', index=False)
+        df_di.to_excel(writer, sheet_name='Desechos_Agua_Gris', index=False)
+        df_ht.to_excel(writer, sheet_name='Desechos_Agua_Tratada', index=False)
+
+    print("Resultados exportados a 'resultados_modelo_aguas_grises.xlsx'")
