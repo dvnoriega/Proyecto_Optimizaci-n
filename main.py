@@ -21,7 +21,7 @@ A = [(i, j) for i in N for j in N if i != j]
 # --- Parámetros (ejemplo simplificado) ---
 gamma = {'s1': 42084}
 kappa = {v: 1000 for v in V}
-omega = 0.7
+#omega = 0.7
 mu = {('s1', 'nt1', t): 0.8 for t in T}  # calidad
 phi = {t: 100 for t in T}
 delta = {t: 50 for t in T}
